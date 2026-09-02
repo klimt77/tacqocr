@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TACQOCR</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F1A1F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TACQOCR">
+<link rel="apple-touch-icon" href="logo.png">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg:#0F1A1F; --surface:#162028; --surface2:#1C2A34; --border:#243340;
+  --teal:#0F3342; --green:#62E87C; --green-dim:#3a8a4a;
+  --white:#F0F4F5; --muted:#7A9BAA; --danger:#E86262;
+  --radius:16px; --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+html,body { height:100%; font-family:var(--font); background:var(--bg); color:var(--white); }
+.app { width:100%; max-width:430px; min-height:100vh; margin:0 auto; display:flex; flex-direction:column; }
+
+/* Header */
+.header { display:flex; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border); gap:12px; }
+.logo-icon { width:36px; height:36px; background:var(--teal); border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--green); flex-shrink:0; }
+.logo-text { display:flex; flex-direction:column; gap:2px; }
+.logo-name { font-size:15px; font-weight:700; letter-spacing:0.1em; }
+.logo-sub  { font-size:9px; letter-spacing:0.18em; color:var(--green); }
+
+/* Main */
+.main { flex:1; display:flex; flex-direction:column; padding:28px 20px; gap:20px; }
+.section-label { font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+
+/* Action buttons */
+.action-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.action-btn { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius); padding:24px 14px 20px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:10px; color:var(--white); text-align:center; transition:border-color .15s, background .15s; }
+.action-btn:hover { border-color:var(--green); background:#182d38; }
+.action-btn:active { background:#1e3540; }
+.action-icon { width:48px; height:48px; background:var(--teal); border-radius:13px; display:flex; align-items:center; justify-content:center; color:var(--green); }
+.action-title { font-size:14px; font-weight:700; }
+.action-sub   { font-size:11px; color:var(--muted); }
+
+/* Preview */
+.preview-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.preview-bar  { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border); }
+.preview-bar-name { flex:1; min-width:0; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.clear-btn { background:none; border:none; cursor:pointer; color:var(--muted); padding:4px; display:flex; transition:color .15s; }
+.clear-btn:hover { color:var(--danger); }
+.preview-img { width:100%; max-height:260px; object-fit:contain; background:#0a1318; display:block; }
+.preview-pdf { padding:24px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.preview-pdf-name { font-size:14px; font-weight:600; }
+.preview-pdf-size { font-size:12px; color:var(--muted); }
+
+/* Analyse button */
+.analyse-btn { background:var(--green); color:#071a0e; border:none; border-radius:var(--radius); padding:18px; font-size:15px; font-weight:700; cursor:pointer; width:100%; transition:opacity .15s; letter-spacing:0.02em; }
+.analyse-btn:hover { opacity:.9; }
+.analyse-btn:disabled { background:var(--border); color:var(--muted); cursor:not-allowed; opacity:1; }
+
+/* Status */
+.status-box { border-radius:var(--radius); padding:14px 16px; font-size:13px; display:flex; align-items:center; gap:10px; }
+.status-box.loading { background:#1a2e38; color:var(--muted); }
+.status-box.error   { background:#2a0f0f; color:var(--danger); border:1px solid #5a2020; }
+.spinner { width:16px; height:16px; flex-shrink:0; border:2px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Overlay */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:300; display:flex; align-items:flex-end; justify-content:center; }
+.overlay.hidden { display:none; }
+.sheet { background:var(--surface2); border-radius:22px 22px 0 0; width:100%; max-width:430px; max-height:92vh; display:flex; flex-direction:column; animation:slideUp .25s ease; }
+@keyframes slideUp { from{transform:translateY(60px);opacity:0} to{transform:none;opacity:1} }
+.sheet-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:14px auto 0; flex-shrink:0; }
+.sheet-header { padding:16px 20px 0; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; }
+.sheet-title { font-size:18px; font-weight:700; }
+.sheet-close { background:none; border:none; cursor:pointer; color:var(--muted); padding:4px; display:flex; }
+.sheet-close:hover { color:var(--white); }
+.sheet-scroll { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:12px; }
+.sheet-footer { padding:16px 20px 32px; flex-shrink:0; }
+
+/* OCR result fields */
+.ocr-field { background:var(--surface); border-radius:12px; padding:14px 16px; }
+.ocr-field-label { font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.ocr-field-value { font-size:15px; font-weight:600; color:var(--white); line-height:1.4; }
+.ocr-field-value.empty { color:var(--muted); font-weight:400; font-size:13px; font-style:italic; }
+
+/* Amount highlight */
+.ocr-field.highlight { border:1.5px solid var(--green-dim); }
+.ocr-field.highlight .ocr-field-value { color:var(--green); font-size:20px; }
+
+/* Confidence badge */
+.conf-badge { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; padding:3px 8px; border-radius:20px; margin-top:6px; }
+.conf-high   { background:#0d2318; color:var(--green); }
+.conf-medium { background:#2a2010; color:#f0b429; }
+.conf-low    { background:#2a0f0f; color:var(--danger); }
+
+/* Divider */
+.ocr-divider { font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); padding:4px 0; border-bottom:1px solid var(--border); }
+
+/* Close button */
+.close-btn { background:none; border:1.5px solid var(--border); border-radius:var(--radius); padding:15px; color:var(--white); font-size:14px; font-weight:600; cursor:pointer; width:100%; transition:border-color .15s; }
+.close-btn:hover { border-color:var(--muted); }
+
+input[type="file"] { display:none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="header">
+    <div class="logo-icon">
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="9" y1="13" x2="15" y2="13"/>
+        <line x1="9" y1="17" x2="13" y2="17"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <div class="logo-name">TACQOCR</div>
+      <div class="logo-sub">Invoice Scanner</div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div>
+      <div class="section-label">Scan invoice</div>
+      <div class="action-row">
+        <button class="action-btn" onclick="openCamera()">
+          <div class="action-icon">
+            <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <div class="action-title">Camera</div>
+          <div class="action-sub">Take a photo</div>
+        </button>
+        <button class="action-btn" onclick="openFile()">
+          <div class="action-icon">
+            <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="12"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+          </div>
+          <div class="action-title">From device</div>
+          <div class="action-sub">Photo or PDF</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="preview-wrap" id="previewWrap" style="display:none">
+      <div class="preview-bar">
+        <span class="preview-bar-name" id="previewName"></span>
+        <button class="clear-btn" onclick="clearFile()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div id="previewBody"></div>
+    </div>
+
+    <div class="status-box" id="statusBox" style="display:none">
+      <div class="spinner" id="statusSpinner" style="display:none"></div>
+      <span id="statusMsg"></span>
+    </div>
+
+    <button class="analyse-btn" id="analyseBtn" onclick="analyse()" disabled>
+      🔍 Analyse invoice
+    </button>
+  </main>
+</div>
+
+<!-- OCR Results popup -->
+<div class="overlay hidden" id="resultOverlay" onclick="if(event.target===this)closeResult()">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">Invoice data</div>
+      <button class="sheet-close" onclick="closeResult()">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="sheet-scroll" id="resultContent"></div>
+    <div class="sheet-footer">
+      <button class="close-btn" onclick="closeResult()">Close</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="cameraInput" accept="image/*" capture="environment">
+<input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf">
+
+<script>
+'use strict';
+
+const API_URL = 'https://api.anthropic.com/v1/messages';
+
+let file = null;
+
+// ── File handling ──
+document.getElementById('cameraInput').addEventListener('change', function(e) { onFile(e.target.files[0]); });
+document.getElementById('fileInput').addEventListener('change',   function(e) { onFile(e.target.files[0]); });
+function openCamera() { document.getElementById('cameraInput').click(); }
+function openFile()   { document.getElementById('fileInput').click(); }
+
+function onFile(f) {
+  if (!f) return;
+  file = f;
+  document.getElementById('previewName').textContent = f.name;
+  var body = document.getElementById('previewBody');
+  if (f.type.startsWith('image/')) {
+    body.innerHTML = '<img class="preview-img" src="' + URL.createObjectURL(f) + '" alt="">';
+  } else {
+    body.innerHTML = '<div class="preview-pdf">' +
+      '<svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--muted)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+      '<div class="preview-pdf-name">' + esc(f.name) + '</div>' +
+      '<div class="preview-pdf-size">' + (f.size/1024).toFixed(0) + ' KB</div></div>';
+  }
+  document.getElementById('previewWrap').style.display = 'block';
+  document.getElementById('analyseBtn').disabled = false;
+  clearStatus();
+}
+
+function clearFile() {
+  file = null;
+  document.getElementById('previewWrap').style.display = 'none';
+  document.getElementById('cameraInput').value = '';
+  document.getElementById('fileInput').value   = '';
+  document.getElementById('analyseBtn').disabled = true;
+  clearStatus();
+}
+
+// ── Status ──
+function showStatus(type, msg) {
+  var b = document.getElementById('statusBox');
+  b.className = 'status-box ' + type;
+  b.style.display = 'flex';
+  document.getElementById('statusSpinner').style.display = type === 'loading' ? 'flex' : 'none';
+  document.getElementById('statusMsg').textContent = msg;
+}
+function clearStatus() { document.getElementById('statusBox').style.display = 'none'; }
+
+// ── Result popup ──
+function closeResult() {
+  document.getElementById('resultOverlay').classList.add('hidden');
+}
+
+function showResult(data) {
+  var html = '';
+
+  // Main amount — highlighted
+  if (data.total_ttc) {
+    html += field('Total TTC', data.total_ttc, true);
+  }
+
+  html += '<div class="ocr-divider">Invoice details</div>';
+  html += field('Invoice number', data.invoice_number);
+  html += field('Date', data.date);
+  html += field('Due date', data.due_date);
+
+  html += '<div class="ocr-divider">Supplier</div>';
+  html += field('Name', data.supplier_name);
+  html += field('Address', data.supplier_address);
+  html += field('VAT number', data.supplier_vat);
+
+  html += '<div class="ocr-divider">Client</div>';
+  html += field('Name', data.client_name);
+  html += field('Address', data.client_address);
+
+  html += '<div class="ocr-divider">Amounts</div>';
+  html += field('Total HT', data.total_ht);
+  html += field('VAT amount', data.vat_amount);
+  html += field('VAT rate', data.vat_rate);
+  html += field('Currency', data.currency);
+
+  if (data.description) {
+    html += '<div class="ocr-divider">Description</div>';
+    html += field('Services / items', data.description);
+  }
+
+  document.getElementById('resultContent').innerHTML = html;
+  document.getElementById('resultOverlay').classList.remove('hidden');
+}
+
+function field(label, value, highlight) {
+  var empty = !value || value === 'N/A' || value === '' || value === 'null';
+  var cls = 'ocr-field' + (highlight ? ' highlight' : '');
+  var valCls = 'ocr-field-value' + (empty ? ' empty' : '');
+  var display = empty ? 'Not found' : esc(value);
+  return '<div class="' + cls + '">' +
+    '<div class="ocr-field-label">' + esc(label) + '</div>' +
+    '<div class="' + valCls + '">' + display + '</div>' +
+    '</div>';
+}
+
+// ── Analyse ──
+async function analyse() {
+  if (!file) return;
+  document.getElementById('analyseBtn').disabled = true;
+  showStatus('loading', 'Analysing invoice…');
+
+  try {
+    var b64  = await toBase64(file);
+    var mime = file.type || 'image/jpeg';
+    var isImg = mime.startsWith('image/');
+
+    var contentBlock = isImg
+      ? { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } }
+      : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } };
+
+    var res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: `You are an invoice OCR expert. First determine if the document is an invoice or receipt. Then extract data and return ONLY a valid JSON object with these exact keys:
+{
+  "is_invoice": true,
+  "invoice_number": "",
+  "date": "",
+  "due_date": "",
+  "supplier_name": "",
+  "supplier_address": "",
+  "supplier_vat": "",
+  "client_name": "",
+  "client_address": "",
+  "total_ht": "",
+  "vat_rate": "",
+  "vat_amount": "",
+  "total_ttc": "",
+  "currency": "",
+  "description": ""
+}
+If the document is NOT an invoice or receipt, return: {"is_invoice": false}
+Use "N/A" for invoice fields not found. Return only the JSON, no markdown, no explanation.`,
+        messages: [{
+          role: 'user',
+          content: [
+            contentBlock,
+            { type: 'text', text: 'Extract all invoice data from this document and return the JSON.' }
+          ]
+        }]
+      })
+    });
+
+    if (!res.ok) {
+      var err = await res.json();
+      throw new Error(err.error ? err.error.message : 'API error ' + res.status);
+    }
+
+    var data = await res.json();
+    var text = data.content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('');
+    var clean = text.replace(/```json|```/g, '').trim();
+    var parsed = JSON.parse(clean);
+
+    clearStatus();
+
+    if (!parsed.is_invoice) {
+      showStatus('error', '⚠️ This document does not appear to be an invoice or receipt. Please try with a valid invoice.');
+      document.getElementById('analyseBtn').disabled = false;
+      return;
+    }
+
+    showResult(parsed);
+
+  } catch(e) {
+    showStatus('error', 'Error: ' + e.message);
+  }
+
+  document.getElementById('analyseBtn').disabled = false;
+}
+
+function toBase64(f) {
+  return new Promise(function(res, rej) {
+    var r = new FileReader();
+    r.onload  = function() { res(r.result.split(',')[1]); };
+    r.onerror = function() { rej(new Error('Read failed')); };
+    r.readAsDataURL(f);
+  });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Unregister old service workers
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(r) { r.forEach(function(sw) { sw.unregister(); }); });
+}
+</script>
+</body>
+</html>
