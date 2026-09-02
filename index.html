@@ -198,7 +198,7 @@ input[type="file"] { display:none; }
 <script>
 'use strict';
 
-const API_URL = 'https://api.anthropic.com/v1/messages';
+const PROXY_URL = 'https://script.google.com/macros/s/AKfycbymf-QhTbylPfzsr6MYJyFbrn8-KZpooUqZKyx9tbUE7SzhPao2UX0vDDmK6he_KdFw5Q/exec';
 
 let file = null;
 
@@ -307,55 +307,21 @@ async function analyse() {
   try {
     var b64  = await toBase64(file);
     var mime = file.type || 'image/jpeg';
-    var isImg = mime.startsWith('image/');
 
-    var contentBlock = isImg
-      ? { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } }
-      : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } };
-
-    var res = await fetch(API_URL, {
+    var res = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: `You are an invoice OCR expert. First determine if the document is an invoice or receipt. Then extract data and return ONLY a valid JSON object with these exact keys:
-{
-  "is_invoice": true,
-  "invoice_number": "",
-  "date": "",
-  "due_date": "",
-  "supplier_name": "",
-  "supplier_address": "",
-  "supplier_vat": "",
-  "client_name": "",
-  "client_address": "",
-  "total_ht": "",
-  "vat_rate": "",
-  "vat_amount": "",
-  "total_ttc": "",
-  "currency": "",
-  "description": ""
-}
-If the document is NOT an invoice or receipt, return: {"is_invoice": false}
-Use "N/A" for invoice fields not found. Return only the JSON, no markdown, no explanation.`,
-        messages: [{
-          role: 'user',
-          content: [
-            contentBlock,
-            { type: 'text', text: 'Extract all invoice data from this document and return the JSON.' }
-          ]
-        }]
+        image: b64,
+        mimeType: mime
       })
     });
 
     if (!res.ok) {
-      var err = await res.json();
-      throw new Error(err.error ? err.error.message : 'API error ' + res.status);
+      throw new Error('Proxy error ' + res.status);
     }
 
-    var data = await res.json();
-    var text = data.content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('');
+    var text = await res.text();
     var clean = text.replace(/```json|```/g, '').trim();
     var parsed = JSON.parse(clean);
 
