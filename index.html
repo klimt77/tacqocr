@@ -198,7 +198,8 @@ input[type="file"] { display:none; }
 <script>
 'use strict';
 
-const PROXY_URL = 'https://script.google.com/macros/s/AKfycbyH2ueg8gU9MPeXfAkve5tKtMKTR6_5m4FbQgwCLVmVGP1hOBhDk1uO88a5nsdqzlmkLA/exec';
+const GEMINI_KEY = 'AQ.Ab8RN6JBZQxooe2AmvwcGi1NvZj-IVUTVCV7XjDP05k4tyuvtA';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_KEY;
 
 let file = null;
 
@@ -308,20 +309,30 @@ async function analyse() {
     var b64  = await toBase64(file);
     var mime = file.type || 'image/jpeg';
 
-    var res = await fetch(PROXY_URL, {
+    var prompt = "You are an invoice OCR expert. Extract all invoice data and return ONLY a valid JSON object with these exact keys: {\"is_invoice\": true, \"invoice_number\": \"\", \"date\": \"\", \"due_date\": \"\", \"supplier_name\": \"\", \"supplier_address\": \"\", \"supplier_vat\": \"\", \"client_name\": \"\", \"client_address\": \"\", \"total_ht\": \"\", \"vat_rate\": \"\", \"vat_amount\": \"\", \"total_ttc\": \"\", \"currency\": \"\", \"description\": \"\"}. If NOT an invoice, return: {\"is_invoice\": false}. Use N/A for fields not found. Return only JSON, no markdown.";
+
+    var payload = {
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: mime, data: b64 } },
+          { text: prompt }
+        ]
+      }]
+    };
+
+    var res = await fetch(GEMINI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image: b64,
-        mimeType: mime
-      })
+      body: JSON.stringify(payload)
     });
 
     if (!res.ok) {
-      throw new Error('Proxy error ' + res.status);
+      var err = await res.json();
+      throw new Error(err.error ? err.error.message : 'API error ' + res.status);
     }
 
-    var text = await res.text();
+    var result = await res.json();
+    var text = result.candidates[0].content.parts[0].text;
     var clean = text.replace(/```json|```/g, '').trim();
     var parsed = JSON.parse(clean);
 
