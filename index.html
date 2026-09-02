@@ -121,6 +121,25 @@ input[type="file"] { display:none; }
     </div>
   </header>
 
+  <!-- API Key banner -->
+  <div id="keyBanner" style="margin:16px 20px 0; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius); padding:16px; display:flex; flex-direction:column; gap:10px;">
+    <div style="font-size:13px; font-weight:600;">🔑 Gemini API Key</div>
+    <div style="font-size:12px; color:var(--muted); line-height:1.5;">Enter your free Gemini API key from <strong>aistudio.google.com</strong>. Saved locally on your device only.</div>
+    <div style="display:flex; gap:8px;">
+      <input id="keyInput" type="password" placeholder="AIza..." style="flex:1; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; padding:11px 14px; color:var(--white); font-size:13px; outline:none;">
+      <button onclick="saveKey()" style="background:var(--green); border:none; border-radius:10px; padding:11px 16px; color:#071a0e; font-weight:700; font-size:13px; cursor:pointer;">Save</button>
+    </div>
+  </div>
+
+  <!-- Key set indicator -->
+  <div id="keySet" class="hidden" style="margin:12px 20px 0; background:var(--surface); border:1px solid var(--green-dim); border-radius:var(--radius); padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">
+    <div style="font-size:13px; color:var(--green); display:flex; align-items:center; gap:8px;">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Gemini API key configured
+    </div>
+    <button onclick="clearKey()" style="background:none; border:none; color:var(--muted); font-size:12px; cursor:pointer; text-decoration:underline;">Change</button>
+  </div>
+
   <main class="main">
     <div>
       <div class="section-label">Scan invoice</div>
@@ -198,8 +217,41 @@ input[type="file"] { display:none; }
 <script>
 'use strict';
 
-const GEMINI_KEY = 'AQ.Ab8RN6JBZQxooe2AmvwcGi1NvZj-IVUTVCV7XjDP05k4tyuvtA';
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_KEY;
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=';
+const KEY_STORAGE = 'tq_gemini_key';
+
+// ── API Key management ──
+function saveKey() {
+  var k = document.getElementById('keyInput').value.trim();
+  if (!k) return;
+  localStorage.setItem(KEY_STORAGE, k);
+  document.getElementById('keyInput').value = '';
+  showKeySet();
+}
+
+function clearKey() {
+  localStorage.removeItem(KEY_STORAGE);
+  showKeyBanner();
+}
+
+function getKey() {
+  return localStorage.getItem(KEY_STORAGE);
+}
+
+function showKeySet() {
+  document.getElementById('keyBanner').classList.add('hidden');
+  document.getElementById('keySet').classList.remove('hidden');
+}
+
+function showKeyBanner() {
+  document.getElementById('keyBanner').classList.remove('hidden');
+  document.getElementById('keySet').classList.add('hidden');
+}
+
+// Init key state
+(function() {
+  if (getKey()) showKeySet(); else showKeyBanner();
+})();
 
 let file = null;
 
@@ -302,6 +354,11 @@ function field(label, value, highlight) {
 // ── Analyse ──
 async function analyse() {
   if (!file) return;
+  var key = getKey();
+  if (!key) {
+    showStatus('error', 'Please enter your Gemini API key first.');
+    return;
+  }
   document.getElementById('analyseBtn').disabled = true;
   showStatus('loading', 'Analysing invoice…');
 
@@ -320,7 +377,7 @@ async function analyse() {
       }]
     };
 
-    var res = await fetch(GEMINI_URL, {
+    var res = await fetch(GEMINI_URL + key, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
