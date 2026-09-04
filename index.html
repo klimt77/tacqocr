@@ -18,7 +18,7 @@
 <pre id="result" style="background:#162028;padding:10px;border-radius:8px;white-space:pre-wrap;font-size:12px"></pre>
 <script>
 const MODEL = 'gemini-1.5-flash';
-const URL_BASE = 'https://generativelanguage.googleapis.com/v1/models/' + MODEL + ':generateContent?key=';
+const URL_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=';
 document.getElementById('model').textContent = 'Model: ' + MODEL;
 
 function saveKey() {
